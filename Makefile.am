@@ -1,39 +1,97 @@
-# Makefile for Indonesian-Malaysian MT
+###############################################################################
+## Makefile for Indonesian--Malaysian
+###############################################################################
 
-VERSION=0.1.1
-LANG1=id
-LANG2=ms
+LANG1=ind
+LANG2=zlm
 PREFIX1=$(LANG1)-$(LANG2)
 PREFIX2=$(LANG2)-$(LANG1)
 
 BASENAME=apertium-$(PREFIX1)
 
-TARGETS_COMMON = $(PREFIX1).autobil.bin $(PREFIX2).autobil.bin \
-	$(PREFIX1).automorf.bin $(PREFIX1).autogen.bin $(PREFIX1).t1x.bin \
-	$(PREFIX2).automorf.bin $(PREFIX2).autogen.bin $(PREFIX2).t1x.bin \
-	$(PREFIX1).mode $(PREFIX2).mode modes
+TARGETS_COMMON =		\
+	$(PREFIX1).automorf.bin	\
+	$(PREFIX1).prob		\
+	$(PREFIX1).rlx.bin	\
+	$(PREFIX1).autobil.bin	\
+	$(PREFIX1).autogen.bin	\
+	$(PREFIX1).autopgen.bin	\
+	$(PREFIX1).t1x.bin	\
+	$(PREFIX2).automorf.bin	\
+	$(PREFIX2).prob		\
+	$(PREFIX2).rlx.bin	\
+	$(PREFIX2).autobil.bin	\
+	$(PREFIX2).autogen.bin	\
+	$(PREFIX2).autopgen.bin	\
+	$(PREFIX2).t1x.bin
 
-# Indonesian transducer
 
-$(PREFIX1).automorf.bin: $(BASENAME).$(LANG1).dix
-	apertium-validate-dictionary $(BASENAME).$(LANG1).dix
-	lt-comp lr $(BASENAME).$(LANG1).dix $@
+# This include defines goals for install-modes, .deps/.d, autobil.prefixes and .mode files:
+@ap_include@
 
-$(PREFIX2).autogen.bin: $(BASENAME).$(LANG1).dix
-	apertium-validate-dictionary $(BASENAME).$(LANG1).dix
-	lt-comp rl $(BASENAME).$(LANG1).dix $@
+###############################################################################
+## Monolingual transducers
+###############################################################################
 
-# Malaysian transducer
+# -------------------
+# Indonesian analysis:
+# -------------------
 
-$(PREFIX2).automorf.bin: $(BASENAME).$(LANG2).dix
-	apertium-validate-dictionary $(BASENAME).$(LANG2).dix
-	lt-comp lr $(BASENAME).$(LANG2).dix $@
+.deps/$(LANG1).automorf.bin: $(AP_SRC1)/$(LANG1).automorf.bin .deps/.d
+	cp $< $@
 
-$(PREFIX1).autogen.bin: $(BASENAME).$(LANG2).dix
-	apertium-validate-dictionary $(BASENAME).$(LANG2).dix
-	lt-comp rl $(BASENAME).$(LANG2).dix $@
+$(PREFIX1).automorf.bin: .deps/$(LANG1).automorf.bin $(PREFIX1).autobil.bin
+	lt-trim $^ $@
 
-# Bilingual dictionaries
+# -------------------
+# Indonesian generation:
+# ---------------------
+
+
+$(PREFIX2).autogen.bin: $(AP_SRC1)/$(LANG1).autogen.bin
+	cp $< $@
+
+# -------------------
+# Malaysian analysis:
+# -------------------
+
+.deps/$(LANG2).automorf.bin: $(AP_SRC2)/$(LANG2).automorf.bin .deps/.d
+	cp $< $@
+
+$(PREFIX2).automorf.bin: .deps/$(LANG2).automorf.bin $(PREFIX2).autobil.bin
+	lt-trim $^ $@
+
+# -------------------
+# Malaysian generation:
+# ---------------------
+
+
+$(PREFIX1).autogen.bin: $(AP_SRC2)/$(LANG2).autogen.bin
+	cp $< $@
+
+###############################################################################
+## Tagger models
+###############################################################################
+
+$(PREFIX1).prob: $(AP_SRC1)/$(LANG1).prob
+	cp $< $@
+
+$(PREFIX2).prob: $(AP_SRC2)/$(LANG2).prob
+	cp $< $@
+
+###############################################################################
+## Disambiguation rules
+###############################################################################
+
+$(PREFIX1).rlx.bin: $(AP_SRC1)/apertium-$(LANG1).$(LANG1).rlx
+	cg-comp $< $@
+
+$(PREFIX2).rlx.bin: $(AP_SRC2)/apertium-$(LANG2).$(LANG2).rlx
+	cg-comp $< $@
+
+###############################################################################
+## Bilingual dictionaries
+###############################################################################
 
 $(PREFIX1).autobil.bin: $(BASENAME).$(PREFIX1).dix
 	apertium-validate-dictionary $<
@@ -43,66 +101,75 @@ $(PREFIX2).autobil.bin: $(BASENAME).$(PREFIX1).dix
 	apertium-validate-dictionary $<
 	lt-comp rl $< $@
 
-# Transfer rules
+###############################################################################
+## Structural transfer rules
+###############################################################################
 
 $(PREFIX1).t1x.bin: $(BASENAME).$(PREFIX1).t1x
-	apertium-validate-transfer $(BASENAME).$(PREFIX1).t1x
-	apertium-preprocess-transfer $(BASENAME).$(PREFIX1).t1x $@
+	apertium-validate-transfer $<
+	apertium-preprocess-transfer $< $@
+
 
 $(PREFIX2).t1x.bin: $(BASENAME).$(PREFIX2).t1x
-	apertium-validate-transfer $(BASENAME).$(PREFIX2).t1x
-	apertium-preprocess-transfer $(BASENAME).$(PREFIX2).t1x $@
+	apertium-validate-transfer $<
+	apertium-preprocess-transfer $< $@
 
-empty.bin: empty.t1x
-	apertium-validate-transfer empty.t1x
-	apertium-preprocess-transfer empty.t1x $@
+###############################################################################
+## Postgeneration dictionaries
+###############################################################################
 
-# Modes
+$(PREFIX1).autopgen.bin: $(AP_SRC2)/$(LANG2).autopgen.bin
+	cp $< $@
 
-modes/$(PREFIX1).mode: modes.xml
-	apertium-validate-modes modes.xml
-	apertium-gen-modes modes.xml
-	cp *.mode modes/
+$(PREFIX2).autopgen.bin: $(AP_SRC1)/$(LANG1).autopgen.bin
+	cp $< $@
 
-modes/$(PREFIX2).mode: modes.xml
-	apertium-validate-modes modes.xml
-	apertium-gen-modes modes.xml
-	cp *.mode modes/
+###############################################################################
+## Distribution
+###############################################################################
 
-# Installation
+EXTRA_DIST=					\
+		$(BASENAME).$(PREFIX1).dix	\
+		$(BASENAME).$(PREFIX1).t1x	\
+		$(BASENAME).$(PREFIX2).t1x	\
+		modes.xml
 
-EXTRA_DIST=$(PREFIX1).prob $(PREFIX2).prob \
-           $(BASENAME).$(LANG1).dix \
-           $(BASENAME).$(LANG2).dix \
-           $(BASENAME).$(PREFIX1).dix \
-           $(BASENAME).$(PREFIX1).t1x \
-           $(BASENAME).$(PREFIX2).t1x \
-           modes.xml
+###############################################################################
+## Installation
+###############################################################################
 
-apertium_id_msmodesdir=$(prefix)/share/apertium/modes/
-apertium_id_msdir=$(prefix)/share/apertium/$(BASENAME)/
+apertium_ind_zlmdir=$(prefix)/share/apertium/$(BASENAME)/
 
-apertium_id_ms_DATA=$(PREFIX1).autobil.bin $(PREFIX2).autobil.bin \
-                    $(PREFIX1).prob $(PREFIX2).prob \
-		    $(PREFIX1).autogen.bin $(PREFIX2).autogen.bin \
-		    $(PREFIX1).automorf.bin $(PREFIX2).automorf.bin \
-		    $(PREFIX1).t1x.bin $(PREFIX2).t1x.bin \
-		    $(BASENAME).$(PREFIX1).t1x $(BASENAME).$(PREFIX2).t1x \
-		    modes.xml
+# Files which should be installed to $(prefix)/share/apertium/$(BASENAME)/:
+apertium_ind_zlm_DATA=	\
+	$(TARGETS_COMMON)				\
+	$(BASENAME).$(PREFIX1).t1x			\
+	$(BASENAME).$(PREFIX2).t1x
 
-noinst_DATA=modes/$(PREFIX1).mode modes/$(PREFIX2).mode
+# All modes are created by the same goal, listing several will just give problems with make -j2
+noinst_DATA=modes/$(PREFIX1).mode \
+	.deps/$(LANG1).automorf.bin \
+	.deps/$(LANG2).automorf.bin
 
-install-data-local:
-	mv modes modes~
-	$(prefix)/bin/apertium-gen-modes modes.xml $(BASENAME)
-	rm -rf modes
-	mv modes~ modes
-	test -d $(DESTDIR)$(apertium_id_msmodesdir) || mkdir $(DESTDIR)$(apertium_id_msmodesdir)
-	$(INSTALL_DATA) $(PREFIX1).mode $(DESTDIR)$(apertium_id_msmodesdir)
-	$(INSTALL_DATA) $(PREFIX2).mode $(DESTDIR)$(apertium_id_msmodesdir)
-	rm $(PREFIX1).mode
-	rm $(PREFIX2).mode
-	$(INSTALL_DATA) $(BASENAME).$(PREFIX1).t1x $(DESTDIR)$(apertium_id_msdir)
-	$(INSTALL_DATA) $(BASENAME).$(PREFIX2).t1x $(DESTDIR)$(apertium_id_msdir)
+install-data-local: install-modes
 
-CLEANFILES = -r $(TARGETS_COMMON)
+###############################################################################
+## Cleanup
+###############################################################################
+
+CLEANFILES = $(TARGETS_COMMON)
+clean-local:
+	-rm -rf .deps modes
+
+###############################################################################
+## Test
+###############################################################################
+
+test: all
+	echo "house" | apertium -d . ind-zlm | tee .test-mt
+	@echo "house" > .test-ref
+	@diff .test-ref .test-mt
+	echo "house" | apertium -d . zlm-ind | tee .test-mt
+	@echo "house" > .test-ref
+	@diff .test-ref .test-mt
+	@rm .test-ref .test-mt

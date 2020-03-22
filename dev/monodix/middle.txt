@@ -1,2 +1,0 @@
-  </pardefs>
-  <section id="main" type="standard">
